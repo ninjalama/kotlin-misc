@@ -2,12 +2,9 @@ package bowlingcalculator
 
 import utils.ResourceUtils
 
-fun List<Frame>.getNextRolls(nrOfRolls: Int): List<Roll> {
-    return this.flatMap { it.rolls }.take(nrOfRolls)
-}
 
 fun List<Frame>.getNextRollsPinSum(nrOfRolls: Int): Int {
-    return getNextRolls(nrOfRolls).sumOf { it.nrOfPins }
+    return this.flatMap { it.rolls }.take(nrOfRolls).sumOf { it.nrOfPins}
 }
 
 enum class FrameType {
@@ -41,23 +38,21 @@ data class Game(val frames: List<Frame>) {
 
     companion object {
         fun fromInputLine(line: String): Game {
-            // Parse a line describing a game - where "X" = Strike, "/" = Spare, "-" indicated a miss
-            // Sample a: X X X X X X X X X X X X:300
-            // Sample b: 9- 9- 9- 9- 9- 9- 9- 9- 9- 9-:
+            // Parses a line describing a game - where "X" = Strike, "/" = Spare, "-" indicated a miss, a number representing knocked down pins otherwise
+            // Sample a: X X X X X X X X X X X X
+            // Sample b: 9- 9- 9- 9- 9- 9- 9- 9- 9- 9-
             // Samble c: 5/ 5/ 5/ 5/ 5/ 5/ 5/ 5/ 5/ 5/5
 
             // Since there are a maximum of 10 frames - but the samples include > 10 elements separated by " ", here's the parsing decision:
             // 1. Split the line into a maximum of 10 parts (last part potentially being e.g. " X X X")
             // 2. Remove whitespace (.. only useful for 10th frame). Tenth frame will as a result be represeted as e.g. "XX", "XXX", "5/5", "54", etc.
-            val (framePart, gameScore) = line.split(":")
-            val framesString = framePart.split(" ", limit = 10).map { it.replace(" ", "") }
 
-            // Even though the possible representationsfor roll 1, roll 2, and the bonus roll 3 (tenth frame), are:
+            // Even though the possible representations for roll 1, roll 2, and the bonus roll 3 (tenth frame), are:
             // Roll 1: "X", "-", [1,9]
             // Roll 2: "/", "-", [1, 9]
             // Roll 3: "X", "-", [1,9]
             // .. we can simplify, because we're not supposed to validate rolls, frames, or anything.
-            // The input-line is to be viewed as a valid line describing the game - which simplifies things:
+            val framesString = line.split(" ", limit = 10).map { it.replace(" ", "") }
             val frames = framesString.mapIndexed { idx, frameStr ->
                 val rolls = frameStr.mapIndexed { idx, char ->
                     val previousTurn = frameStr.getOrNull(idx - 1)
@@ -69,7 +64,7 @@ data class Game(val frames: List<Frame>) {
                     }
                 }.map(::Roll)
 
-                Frame(idx, rolls)
+                Frame(idx + 1, rolls)
             }
             return Game(frames)
         }
@@ -81,7 +76,22 @@ fun main(args: Array<String>) {
     val lines = sampleInputs.split("\n")
     val games = lines.map { Game.fromInputLine(it) }
 
-    games.forEachIndexed { idx, game ->
-        println("Score for game #$idx: " + game.getScore())
+    val gameLinesToGame = lines.zip(games)
+
+    println("Sample games - and score:")
+    gameLinesToGame.forEach { gameLineToGame ->
+        println("\nGame input: " + gameLineToGame.first)
+        println("Game score: " + gameLineToGame.second.getScore())
     }
+
+    fun readGameInput() {
+        println("Type in a game to get score:\n")
+        println()
+        val input = readLine()
+        if (input != null) {
+            println("Game score: " + Game.fromInputLine(input).getScore())
+        }
+    }
+
+    while(true) readGameInput()
 }
