@@ -7,7 +7,7 @@ fun List<Frame>.getNextRolls(nrOfRolls: Int): List<Roll> {
 }
 
 fun List<Frame>.getNextRollsPinSum(nrOfRolls: Int): Int {
-    return getNextRolls(nrOfRolls).sumBy { it.nrOfPins }
+    return getNextRolls(nrOfRolls).sumOf { it.nrOfPins }
 }
 
 enum class FrameType {
@@ -15,40 +15,35 @@ enum class FrameType {
 }
 
 data class Roll(val nrOfPins: Int)
-
 data class Frame(val frameNumber: Int, val rolls: List<Roll>) {
     val frameType: FrameType
 
     init {
         frameType = when {
-            // If the first roll on its own is 10 - this Frame's FrameType is considered a STRIKE
             rolls.first().nrOfPins == 10 -> FrameType.STRIKE
-            // If the first two rolls summed is 10 - this Frame's FrameTye is considered a SPARE 
-            rolls.take(2).map { it.nrOfPins }.sum() == 10 -> FrameType.SPARE
-            // Otherwise.. this fram's FrameType is someting else.. OTHER, for a lack of a better name
+            rolls.take(2).sumOf { it.nrOfPins } == 10 -> FrameType.SPARE
             else -> FrameType.OTHER
         }
     }
 
-    fun sumOfPins() = rolls.sumBy { it.nrOfPins }
+    fun sumOfPins() = rolls.sumOf { it.nrOfPins }
 }
 
 data class Game(val frames: List<Frame>) {
-    fun getScore(): Int {
-        return frames.mapIndexed { idx, frame ->
+    fun getScore(): Int =
+        frames.mapIndexed { idx, frame ->
             when (frame.frameType) {
                 FrameType.SPARE -> frame.sumOfPins() + frames.drop(idx + 1).getNextRollsPinSum(1)
                 FrameType.STRIKE -> frame.sumOfPins() + frames.drop(idx + 1).getNextRollsPinSum(2)
                 else -> frame.sumOfPins()
             }
         }.sum()
-    }
 
     companion object {
         fun fromInputLine(line: String): Game {
             // Parse a line describing a game - where "X" = Strike, "/" = Spare, "-" indicated a miss
-            // Sample a: X X X X X X X X X X X X
-            // Sample b: 9- 9- 9- 9- 9- 9- 9- 9- 9- 9-
+            // Sample a: X X X X X X X X X X X X:300
+            // Sample b: 9- 9- 9- 9- 9- 9- 9- 9- 9- 9-:
             // Samble c: 5/ 5/ 5/ 5/ 5/ 5/ 5/ 5/ 5/ 5/5
 
             // Since there are a maximum of 10 frames - but the samples include > 10 elements separated by " ", here's the parsing decision:
@@ -57,29 +52,24 @@ data class Game(val frames: List<Frame>) {
             val (framePart, gameScore) = line.split(":")
             val framesString = framePart.split(" ", limit = 10).map { it.replace(" ", "") }
 
-            // TODO: This needs to be.. improved :-)
+            // Even though the possible representationsfor roll 1, roll 2, and the bonus roll 3 (tenth frame), are:
+            // Roll 1: "X", "-", [1,9]
+            // Roll 2: "/", "-", [1, 9]
+            // Roll 3: "X", "-", [1,9]
+            // .. we can simplify, because we're not supposed to validate rolls, frames, or anything.
+            // The input-line is to be viewed as a valid line describing the game - which simplifies things:
             val frames = framesString.mapIndexed { idx, frameStr ->
-                val firstTry = when (frameStr[0]) {
-                    // First try/throw is limited to strike, miss, or a number of knocked down pins
-                    'X' -> 10
-                    '-' -> 0
-                    else -> frameStr[0].digitToInt()
-                }
-                val secondTry: Int? = when (frameStr.getOrNull(1)) {
-                    // Second try/throw is spare, strike (if 10th frame), miss, or a number of knocked down pins
-                    '/' -> 10 - firstTry
-                    'X' -> 10
-                    '-' -> 0
-                    else -> frameStr.getOrNull(1)?.digitToInt()
-                }
-                val thirdTry: Int? = when (frameStr.getOrNull(2)) {
-                    // Third try/throw is a strike (if 10th frame), miss, or a number of knocked down pins
-                    'X' -> 10
-                    '-' -> 0
-                    else -> frameStr.getOrNull(2)?.digitToInt()
-                }
-                val frame = Frame(idx, listOf(firstTry, secondTry, thirdTry).filterNotNull().map { Roll(it) })
-                frame
+                val rolls = frameStr.mapIndexed { idx, char ->
+                    val previousTurn = frameStr.getOrNull(idx - 1)
+                    when (char) {
+                        'X' -> 10
+                        '-' -> 0
+                        '/' -> 10 - (previousTurn?.digitToInt() ?: 0)
+                        else -> char.digitToInt()
+                    }
+                }.map(::Roll)
+
+                Frame(idx, rolls)
             }
             return Game(frames)
         }
@@ -89,7 +79,7 @@ data class Game(val frames: List<Frame>) {
 fun main(args: Array<String>) {
     val sampleInputs = ResourceUtils.getResourceAsText("/bowlingcalculator/sampleInput.txt").orEmpty()
     val lines = sampleInputs.split("\n")
-    val games = lines.map {Game.fromInputLine(it) }
+    val games = lines.map { Game.fromInputLine(it) }
 
     games.forEachIndexed { idx, game ->
         println("Score for game #$idx: " + game.getScore())
