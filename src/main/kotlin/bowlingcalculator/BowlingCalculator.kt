@@ -54,8 +54,8 @@ data class Game(val frames: List<Frame>) {
             // .. we can simplify, because we're not supposed to validate rolls, frames, or anything.
             val framesString = line.split(" ", limit = 10).map { it.replace(" ", "") }
             val frames = framesString.mapIndexed { idx, frameStr ->
-                val rolls = frameStr.mapIndexed { idx, char ->
-                    val previousTurn = frameStr.getOrNull(idx - 1)
+                val rolls = frameStr.mapIndexed { idy, char ->
+                    val previousTurn = frameStr.getOrNull(idy - 1)
                     when (char) {
                         'X' -> 10
                         '-' -> 0
